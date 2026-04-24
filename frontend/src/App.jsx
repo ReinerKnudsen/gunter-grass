@@ -11,6 +11,7 @@ PFLANZEN:
 - 2 ältere Flieder: Eher horizontal gewachsen, wirken nicht ganz gesund, haben wahrscheinlich Totholz. Der hintere blüht noch nicht, der vordere jüngere blüht schon.
 - Rasen (~90m²): Dieses Jahr erstmals seit 3 Jahren vertikutiert — massig Moos rausgekommen. Dann gedüngt. Heute gemäht, sieht gesund aus. Hat noch Klee und Löwenzahn. Einzelne kahle schattige Stellen, Nachsaat mit altem Samen war leider nicht erfolgreich.
 - Martha: Magnolie, im Boden in der Mitte des Rasens, ~7-8 Jahre alt. Geschichte: Wurde der Vermieterin zum Trotz gepflanzt als diese auszog (sie hatte Magnolien verboten wegen "Dreck"). Martha blüht wunderschön (hat gerade geblüht, jetzt vorbei) und hat viele gesunde Blätter — wächst aber kaum. Fast genauso groß wie beim Einpflanzen. Wahrscheinlich Nährstoffkonkurrenz mit dem Rasen.
+- ein Rosa Blumen-Hartriegel, der schon älter ist (mindestens 15 Jahre), jedes Jahr herrlich blüht, aber im Moment keine besondere Pflege bekommt
 - Kompost: Kleiner eigener Kompost vorhanden.
 
 STANDORT & BEDINGUNGEN:
