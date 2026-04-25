@@ -7,6 +7,8 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
     networks:
       - gunternet
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
 
   frontend:
     build: ./frontend
@@ -16,6 +18,8 @@ services:
       - 3333:80
     networks:
       - gunternet
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
 
 networks:
   gunternet:

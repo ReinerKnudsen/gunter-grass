@@ -217,7 +217,7 @@ export default function GardenAssistant() {
                 fontWeight: 'bold',
                 letterSpacing: '0.05em',
               }}>
-              Mein Garten
+              Gunter Grass - Der Garten Guru
             </div>
             <div style={{ color: 'rgba(184,217,110,0.6)', fontSize: '12px' }}>
               Bonn · {getCurrentSeason()} ·{' '}
