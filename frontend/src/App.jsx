@@ -124,7 +124,7 @@ export default function GardenAssistant() {
 
   const fetchContext = async () => {
     try {
-      context = await fetch('/api/context');
+      const res = await fetch('/api/context');
       const data = await res.json();
       setContext(data);
     } catch (e) {
