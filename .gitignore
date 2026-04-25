@@ -16,3 +16,5 @@ __pycache__/
 .DS_Store
 vite.config.local.js
 backend/memory/garden_memory.json
+
+tagebuch/
