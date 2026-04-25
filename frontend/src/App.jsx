@@ -26,7 +26,38 @@ DEIN STIL:
 - Konkret und praktisch — kein Fachwissen-Overload
 - Du berücksichtigst die aktuelle Jahreszeit und das Wetter in Bonn wenn verfügbar
 - Du gibst klare Handlungsempfehlungen
-- Antworte immer auf Deutsch`;
+- Antworte immer auf Deutsch
+
+DEIN GEDÄCHTNIS:
+Wenn Reiner dir etwas Neues mitteilt — eine Beobachtung, eine Aktion, eine neue Pflanze, ein Ereignis — 
+dann nutze das Werkzeug "save_to_memory" um es zu speichern.
+Speichern wenn: neue Pflanzen, Aktionen ("ich habe gedüngt"), Beobachtungen ("die Feige hat Früchte"), Entscheidungen.
+Nicht speichern wenn: allgemeine Fragen, Smalltalk, Dinge die schon bekannt sind.`;
+
+// NEU: Definition des Werkzeugs das Gunter benutzen kann.
+// Das ist wie ein Vertrag: Gunter weiß was das Tool heißt, was es tut,
+// und welche Parameter es erwartet.
+const TOOLS = [
+  {
+    name: 'save_to_memory',
+    description:
+      'Speichert eine wichtige neue Information über Reiners Garten dauerhaft. Nur aufrufen wenn Reiner etwas wirklich Neues mitteilt.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        key: {
+          type: 'string',
+          description: 'Kurzer Schlüssel z.B. "adam_gedüngt" oder "neue_pflanze"',
+        },
+        value: {
+          type: 'string',
+          description: 'Die Information die gespeichert werden soll',
+        },
+      },
+      required: ['key', 'value'],
+    },
+  },
+];
 
 const getCurrentSeason = () => {
   const month = new Date().getMonth() + 1;
@@ -105,8 +136,8 @@ export default function GardenAssistant() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [weather, setWeather] = useState(null);
-  const messagesEndRef = useRef(null);
   const [memory, setMemory] = useState({});
+  const messagesEndRef = useRef(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -115,6 +146,9 @@ export default function GardenAssistant() {
   useEffect(() => {
     fetchMemory();
   }, []);
+  useEffect(() => {
+    fetchWeather();
+  }, []);
 
   const fetchMemory = async () => {
     try {
@@ -122,17 +156,8 @@ export default function GardenAssistant() {
       const data = await res.json();
       setMemory(data);
     } catch (e) {
-      console.error('Memory fetch failed ', e);
+      console.error('Memory fetch failed', e);
     }
-  };
-
-  useEffect(() => {
-    fetchWeather();
-  }, []);
-
-  const buildMemoryContext = () => {
-    if (Object.keys(memory).length === 0) return '';
-    return '\n\nWAS GUNTER GELERNT HAT:\n' + JSON.stringify(memory, null, 2);
   };
 
   const fetchWeather = async () => {
@@ -164,6 +189,11 @@ export default function GardenAssistant() {
     return `\n\nAKTUELLES WETTER BONN:\n- Jetzt: ${c.temperature_2m}°C, ${getWeatherDescription(c.weathercode)}, Wind: ${c.windspeed_10m} km/h, Niederschlag: ${c.precipitation}mm\n- Heute: ${d.temperature_2m_min[0]}–${d.temperature_2m_max[0]}°C, Regen: ${d.precipitation_sum[0]}mm\n- Morgen: ${d.temperature_2m_min[1]}–${d.temperature_2m_max[1]}°C, Regen: ${d.precipitation_sum[1]}mm\n- Übermorgen: ${d.temperature_2m_min[2]}–${d.temperature_2m_max[2]}°C, Regen: ${d.precipitation_sum[2]}mm`;
   };
 
+  const buildMemoryContext = () => {
+    if (Object.keys(memory).length === 0) return '';
+    return '\n\nWAS GUNTER GELERNT HAT:\n' + JSON.stringify(memory, null, 2);
+  };
+
   const sendMessage = async text => {
     if (!text.trim() || loading) return;
 
@@ -177,26 +207,79 @@ export default function GardenAssistant() {
       const systemPrompt =
         GARDEN_CONTEXT + '\n\n' + getMonthContext() + buildWeatherContext() + buildMemoryContext();
 
-      const apiMessages = newMessages.map(m => ({
-        role: m.role,
-        content: m.content,
-      }));
+      const apiMessages = newMessages.map(m => ({ role: m.role, content: m.content }));
 
-      const response = await fetch('api/chat', {
+      // ERSTER API-CALL — wie bisher, aber jetzt mit tools
+      const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
           max_tokens: 1000,
           system: systemPrompt,
+          tools: TOOLS, // NEU: Gunter bekommt sein Werkzeug angeboten
           messages: apiMessages,
         }),
       });
 
       const data = await response.json();
-      const assistantText =
-        data.content?.[0]?.text || 'Entschuldigung, da ist etwas schiefgelaufen.';
-      setMessages([...newMessages, { role: 'assistant', content: assistantText }]);
+
+      // NEU: Prüfen ob Gunter ein Tool benutzen will
+      // stop_reason "tool_use" bedeutet: Gunter hat entschieden etwas zu speichern
+      if (data.stop_reason === 'tool_use') {
+        // Den tool_use Block aus der Antwort finden
+        const toolUseBlock = data.content.find(block => block.type === 'tool_use');
+
+        // Memory im Backend speichern
+        await fetch('/api/memory', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            data: { [toolUseBlock.input.key]: toolUseBlock.input.value },
+          }),
+        });
+
+        // Lokales Memory aktualisieren damit buildMemoryContext() aktuell bleibt
+        setMemory(prev => ({ ...prev, [toolUseBlock.input.key]: toolUseBlock.input.value }));
+
+        // ZWEITER API-CALL — Gunter soll jetzt dem Nutzer antworten.
+        // Wir schicken den kompletten bisherigen Verlauf + Gunters tool_use + das Ergebnis
+        const followUpResponse = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 1000,
+            system: systemPrompt,
+            tools: TOOLS,
+            messages: [
+              ...apiMessages,
+              // Gunters erster Zug: er wollte das Tool benutzen
+              { role: 'assistant', content: data.content },
+              // Unser Zug: wir bestätigen dass das Tool funktioniert hat
+              {
+                role: 'user',
+                content: [
+                  {
+                    type: 'tool_result',
+                    tool_use_id: toolUseBlock.id,
+                    content: 'Gespeichert.',
+                  },
+                ],
+              },
+            ],
+          }),
+        });
+
+        const followUpData = await followUpResponse.json();
+        const assistantText = followUpData.content?.[0]?.text || 'Erledigt!';
+        setMessages([...newMessages, { role: 'assistant', content: assistantText }]);
+      } else {
+        // Normaler Fall — kein Tool, nur Text
+        const assistantText =
+          data.content?.[0]?.text || 'Entschuldigung, da ist etwas schiefgelaufen.';
+        setMessages([...newMessages, { role: 'assistant', content: assistantText }]);
+      }
     } catch (e) {
       setMessages([
         ...newMessages,
@@ -247,7 +330,6 @@ export default function GardenAssistant() {
           </div>
         </div>
 
-        {/* Weather Widget */}
         {weather && (
           <div
             style={{
@@ -457,10 +539,7 @@ export default function GardenAssistant() {
       </div>
 
       <style>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.4; }
-        }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
         ::-webkit-scrollbar { width: 4px; height: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(144,188,100,0.3); border-radius: 2px; }
