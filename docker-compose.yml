@@ -5,6 +5,8 @@ services:
     restart: unless-stopped
     environment:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    volumes:
+      - /mnt/pandadata/gunter/memory:/app/memory
     networks:
       - gunternet
     labels:
