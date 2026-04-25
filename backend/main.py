@@ -25,7 +25,10 @@ class MemoryUpdate(BaseModel):
 
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
-memory_file = Path(__file__).parent / "memory" / "garden_memory.json"
+
+path = Path(__file__).parent / "memory"
+memory_file = path / "garden_memory.json"
+context_file = path / "garden_context.txt"
 
 
 def load_memory():
@@ -36,9 +39,23 @@ def load_memory():
         return {}
 
 
+def load_context():
+    if context_file.exists():
+        context = context_file.read_text()
+        return context
+    else:
+        return ""
+
+
 def save_memory(data):
     memory_file.parent.mkdir(parents=True, exist_ok=True)
     memory_file.write_text(json.dumps(data))
+
+
+@app.get("/context")
+async def get_context():
+    context = load_context()
+    return context
 
 
 @app.get("/memory")

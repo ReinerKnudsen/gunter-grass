@@ -1,39 +1,6 @@
 import React from 'react';
 import { useState, useEffect, useRef } from 'react';
 
-const GARDEN_CONTEXT = `Du bist Reiner's persönlicher Gartenassistent. Du kennst seinen Garten in Bonn (Deutschland) sehr gut:
-
-PFLANZEN:
-- Oliver: Olivenbaum im Kübel, neu eingezogen dieses Frühjahr
-- Olivia: Olivenbaum im Kübel, überwintert bereits dreimal in Bonn (robust und erprobt)
-- Feige (unbenannt): Im Kübel seit 4 Jahren. Letztes Jahr erstmals viele Früchte, aber nicht ausgereift
-- Adam: Junger Apfelbaum (unbekannte Sorte), letztes Jahr adoptiert aus Apfelbetrieb, lebt im Boden. War letztes Jahr unglücklich, blüht jetzt gerade!
-- 2 ältere Flieder: Eher horizontal gewachsen, wirken nicht ganz gesund, haben wahrscheinlich Totholz. Der hintere blüht noch nicht, der vordere jüngere blüht schon.
-- Rasen (~90m²): Dieses Jahr erstmals seit 3 Jahren vertikutiert — massig Moos rausgekommen. Dann gedüngt. Heute gemäht, sieht gesund aus. Hat noch Klee und Löwenzahn. Einzelne kahle schattige Stellen, Nachsaat mit altem Samen war leider nicht erfolgreich.
-- Martha: Magnolie, im Boden in der Mitte des Rasens, ~7-8 Jahre alt. Geschichte: Wurde der Vermieterin zum Trotz gepflanzt als diese auszog (sie hatte Magnolien verboten wegen "Dreck"). Martha blüht wunderschön (hat gerade geblüht, jetzt vorbei) und hat viele gesunde Blätter — wächst aber kaum. Fast genauso groß wie beim Einpflanzen. Wahrscheinlich Nährstoffkonkurrenz mit dem Rasen.
-- ein Rosa Blumen-Hartriegel, der schon älter ist (mindestens 15 Jahre), jedes Jahr herrlich blüht, aber im Moment keine besondere Pflege bekommt
-- Kompost: Kleiner eigener Kompost vorhanden.
-
-STANDORT & BEDINGUNGEN:
-- Bonn, Deutschland
-- Haus mit Nord/Süd-Ausrichtung: Hintergarten im Osten, Vordergarten im Westen → keine vollsonnigen Plätze
-- Großer Baum spendet viel Schatten. Dort wo früher Kirschlorbeer stand wächst kaum was
-- 1000 Liter Wassertonne ohne Pumpe → sparsam mit Wasser umgehen
-- Kein grüner Daumen, aber motiviert!
-
-DEIN STIL:
-- Persönlich und freundlich — du kennst die Pflanzen beim Namen (Oliver, Olivia, Adam)
-- Konkret und praktisch — kein Fachwissen-Overload
-- Du berücksichtigst die aktuelle Jahreszeit und das Wetter in Bonn wenn verfügbar
-- Du gibst klare Handlungsempfehlungen
-- Antworte immer auf Deutsch
-
-DEIN GEDÄCHTNIS:
-Wenn Reiner dir etwas Neues mitteilt — eine Beobachtung, eine Aktion, eine neue Pflanze, ein Ereignis — 
-dann nutze das Werkzeug "save_to_memory" um es zu speichern.
-Speichern wenn: neue Pflanzen, Aktionen ("ich habe gedüngt"), Beobachtungen ("die Feige hat Früchte"), Entscheidungen.
-Nicht speichern wenn: allgemeine Fragen, Smalltalk, Dinge die schon bekannt sind.`;
-
 // NEU: Definition des Werkzeugs das Gunter benutzen kann.
 // Das ist wie ein Vertrag: Gunter weiß was das Tool heißt, was es tut,
 // und welche Parameter es erwartet.
@@ -133,10 +100,12 @@ export default function GardenAssistant() {
       content: `Hallo Reiner! 🌱 Schön, dass du da bist.\n\nIch kenne deinen Garten gut — Oliver und Olivia in ihren Kübeln, Adam der gerade blüht, die Feige die dieses Jahr hoffentlich reife Früchte trägt, und die beiden Flieder die etwas Aufmerksamkeit brauchen.\n\nWie kann ich dir heute helfen?`,
     },
   ]);
+
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [weather, setWeather] = useState(null);
   const [memory, setMemory] = useState({});
+  const [context, setContext] = useState('');
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -149,6 +118,19 @@ export default function GardenAssistant() {
   useEffect(() => {
     fetchWeather();
   }, []);
+  useEffect(() => {
+    fetchContext();
+  }, []);
+
+  const fetchContext = async () => {
+    try {
+      context = await fetch('/api/context');
+      const data = await res.json();
+      setContext(data);
+    } catch (e) {
+      console.error('Context fetch failed ', e);
+    }
+  };
 
   const fetchMemory = async () => {
     try {
@@ -205,7 +187,7 @@ export default function GardenAssistant() {
 
     try {
       const systemPrompt =
-        GARDEN_CONTEXT + '\n\n' + getMonthContext() + buildWeatherContext() + buildMemoryContext();
+        context + '\n\n' + getMonthContext() + buildWeatherContext() + buildMemoryContext();
 
       const apiMessages = newMessages.map(m => ({ role: m.role, content: m.content }));
 
