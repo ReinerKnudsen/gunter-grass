@@ -106,14 +106,34 @@ export default function GardenAssistant() {
   const [loading, setLoading] = useState(false);
   const [weather, setWeather] = useState(null);
   const messagesEndRef = useRef(null);
+  const [memory, setMemory] = useState({});
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   useEffect(() => {
+    fetchMemory();
+  }, []);
+
+  const fetchMemory = async () => {
+    try {
+      const res = await fetch('/api/memory');
+      const data = await res.json();
+      setMemory(data);
+    } catch (e) {
+      console.error('Memory fetch failed ', e);
+    }
+  };
+
+  useEffect(() => {
     fetchWeather();
   }, []);
+
+  const buildMemoryContext = () => {
+    if (Object.keys(memory).length === 0) return '';
+    return '\n\nWAS GUNTER GELERNT HAT:\n' + JSON.stringify(memory, null, 2);
+  };
 
   const fetchWeather = async () => {
     try {
@@ -154,7 +174,8 @@ export default function GardenAssistant() {
     setLoading(true);
 
     try {
-      const systemPrompt = GARDEN_CONTEXT + '\n\n' + getMonthContext() + buildWeatherContext();
+      const systemPrompt =
+        GARDEN_CONTEXT + '\n\n' + getMonthContext() + buildWeatherContext() + buildMemoryContext();
 
       const apiMessages = newMessages.map(m => ({
         role: m.role,
